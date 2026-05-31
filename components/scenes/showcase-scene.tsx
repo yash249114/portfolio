@@ -1,140 +1,224 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { FloatingGlass } from "@/components/floating-glass"
 
-type ShowcaseProps = {
+/* ============================ shared shell ============================ */
+
+function ShowcaseShell({
+  kicker,
+  title,
+  tag,
+  blurb,
+  children,
+  align = "left",
+}: {
   kicker: string
   title: string
   tag: string
-  description: string
-  visual: React.ReactNode
+  blurb: string
+  children: React.ReactNode
   align?: "left" | "right"
-}
-
-function Showcase({ kicker, title, tag, description, visual, align = "left" }: ShowcaseProps) {
+}) {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <FloatingGlass
-        className="glass glass-edge overflow-hidden rounded-[2rem]"
-        intensity={6}
-        floatAmplitude={12}
+        className="glass glass-edge overflow-hidden rounded-[1.75rem] sm:rounded-[2rem]"
+        intensity={5}
+        floatAmplitude={9}
         floatDuration={11}
       >
         <div
-          className={`grid grid-cols-1 items-center gap-8 p-8 sm:p-12 lg:grid-cols-2 ${
+          className={`grid grid-cols-1 items-center gap-6 p-6 sm:gap-8 sm:p-10 lg:grid-cols-2 ${
             align === "right" ? "lg:[&>*:first-child]:order-2" : ""
           }`}
         >
           <div>
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.45em] text-accent">
+            <p className="mb-3 text-[0.7rem] font-medium uppercase tracking-[0.4em] text-accent sm:text-xs">
               {kicker}
             </p>
-            <h2 className="font-serif text-5xl font-light leading-[0.9] text-foreground sm:text-6xl">
+            <h2 className="font-serif text-[clamp(2.6rem,7vw,4.5rem)] font-light leading-[0.9] text-foreground">
               {title}
             </h2>
-            <span className="glass-soft mt-5 inline-block rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-glow">
+            <span className="glass-soft mt-4 inline-block rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-glow">
               {tag}
             </span>
-            <p className="mt-6 max-w-md text-pretty text-base font-light leading-relaxed text-muted sm:text-lg">
-              {description}
+            <p className="mt-5 max-w-sm text-pretty text-sm font-light leading-relaxed text-muted sm:text-base">
+              {blurb}
             </p>
           </div>
-          <div className="relative h-64 w-full sm:h-72">{visual}</div>
+          <div className="relative w-full">{children}</div>
         </div>
       </FloatingGlass>
     </div>
   )
 }
 
-export function LoomScene() {
+function FlowNode({
+  label,
+  sub,
+  active,
+  accent = "accent",
+}: {
+  label: string
+  sub?: string
+  active?: boolean
+  accent?: "accent" | "glow"
+}) {
+  const ring = accent === "accent" ? "shadow-[0_0_30px_-6px_rgba(217,164,65,0.7)]" : "shadow-[0_0_30px_-6px_rgba(79,214,196,0.7)]"
   return (
-    <Showcase
-      kicker="Showcase 01"
-      title="Loom"
-      tag="AI Coding Agent"
-      description="An autonomous coding agent that reads a repository, plans changes, writes code, and opens pull requests — pairing on real engineering work, not just snippets."
-      visual={<LoomVisual />}
-    />
+    <motion.div
+      animate={{
+        scale: active ? 1.04 : 1,
+        borderColor: active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.12)",
+      }}
+      transition={{ duration: 0.4 }}
+      className={`relative flex items-center justify-between gap-3 rounded-xl border bg-white/5 px-4 py-3 ${
+        active ? ring : ""
+      }`}
+    >
+      <div>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {sub ? <p className="text-[0.65rem] text-muted">{sub}</p> : null}
+      </div>
+      <span
+        className={`h-2 w-2 flex-none rounded-full ${
+          active ? (accent === "accent" ? "bg-accent" : "bg-glow") : "bg-foreground/20"
+        }`}
+      />
+    </motion.div>
   )
 }
 
-export function AlbusScene() {
+/** Vertical animated connector with a travelling pulse. */
+function Connector({ active }: { active?: boolean }) {
   return (
-    <Showcase
+    <div className="relative mx-auto h-6 w-[2px] overflow-hidden bg-white/10">
+      {active ? (
+        <motion.div
+          animate={{ y: ["-100%", "100%"] }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-x-0 h-3 bg-gradient-to-b from-transparent via-accent to-transparent"
+        />
+      ) : null}
+    </div>
+  )
+}
+
+/* ============================ Loom ============================ */
+
+const MODELS = ["Gemini", "OpenAI", "Groq", "Ollama"]
+
+export function LoomScene() {
+  const [routed, setRouted] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setRouted((r) => (r + 1) % MODELS.length), 1800)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <ShowcaseShell
+      kicker="Showcase 01"
+      title="Loom"
+      tag="Multi-Model Routing"
+      blurb="One prompt, the smartest model. Loom analyses each request and routes it to the optimal LLM in real time."
+    >
+      <div className="glass-soft rounded-2xl p-5">
+        <FlowNode label="User Prompt" sub="incoming request" active />
+        <Connector active />
+        <FlowNode label="Routing Engine" sub="analysing intent · cost · latency" active accent="glow" />
+        <Connector active />
+
+        {/* model fan-out */}
+        <div className="grid grid-cols-2 gap-2">
+          {MODELS.map((m, i) => {
+            const sel = i === routed
+            return (
+              <motion.div
+                key={m}
+                animate={{
+                  opacity: sel ? 1 : 0.45,
+                  scale: sel ? 1.03 : 1,
+                  borderColor: sel ? "rgba(217,164,65,0.7)" : "rgba(255,255,255,0.1)",
+                }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center justify-between rounded-lg border bg-white/5 px-3 py-2.5 text-xs"
+              >
+                <span className={sel ? "text-foreground" : "text-muted"}>{m}</span>
+                {sel ? (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="rounded-full bg-accent px-1.5 py-0.5 text-[0.55rem] font-medium text-background"
+                  >
+                    routed
+                  </motion.span>
+                ) : null}
+              </motion.div>
+            )
+          })}
+        </div>
+
+        <Connector active />
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-glow" />
+            <span className="text-[0.65rem] text-glow">streaming response</span>
+          </div>
+          <div className="space-y-1.5">
+            {["88%", "64%", "40%"].map((w, i) => (
+              <motion.div
+                key={i}
+                initial={{ width: 0 }}
+                animate={{ width: w }}
+                transition={{ duration: 0.6, delay: i * 0.2, repeat: Infinity, repeatType: "reverse", repeatDelay: 1 }}
+                className="h-1.5 rounded-full bg-foreground/30"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </ShowcaseShell>
+  )
+}
+
+/* ============================ Albus ============================ */
+
+const ALBUS_STEPS = [
+  { l: "Student", s: "begins session" },
+  { l: "Assessment", s: "adaptive questions" },
+  { l: "Code Submission", s: "live editor" },
+  { l: "AI Evaluation", s: "rubric grading" },
+  { l: "Scoring", s: "instant feedback" },
+  { l: "Analytics", s: "insights dashboard" },
+]
+
+export function AlbusScene() {
+  const [step, setStep] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setStep((s) => (s + 1) % ALBUS_STEPS.length), 1600)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <ShowcaseShell
       align="right"
       kicker="Showcase 02"
       title="Albus"
       tag="AI Assessment Platform"
-      description="An adaptive assessment platform that authors questions, evaluates open-ended answers, and tailors difficulty in real time — grading at the depth of a human examiner."
-      visual={<AlbusVisual />}
-    />
-  )
-}
-
-function LoomVisual() {
-  const lines = [
-    { w: "70%", c: "text-glow" },
-    { w: "92%", c: "text-muted" },
-    { w: "55%", c: "text-muted" },
-    { w: "80%", c: "text-accent" },
-    { w: "40%", c: "text-muted" },
-  ]
-  return (
-    <div className="glass-soft flex h-full flex-col rounded-2xl p-4 font-mono text-xs">
-      <div className="mb-3 flex gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/30" />
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/20" />
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/20" />
-      </div>
-      <div className="space-y-2.5">
-        {lines.map((l, i) => (
-          <motion.div
-            key={i}
-            initial={{ width: 0, opacity: 0 }}
-            whileInView={{ width: l.w, opacity: 1 }}
-            viewport={{ amount: 0.5 }}
-            transition={{ duration: 0.7, delay: i * 0.15 }}
-            className={`h-2 rounded-full bg-current ${l.c}`}
-          />
+      blurb="From question to insight. Albus authors assessments, grades open-ended code, and turns every submission into analytics."
+    >
+      <div className="glass-soft rounded-2xl p-5">
+        {ALBUS_STEPS.map((node, i) => (
+          <div key={node.l}>
+            <FlowNode label={node.l} sub={node.s} active={i === step} accent={i >= 3 ? "glow" : "accent"} />
+            {i < ALBUS_STEPS.length - 1 ? <Connector active={i === step} /> : null}
+          </div>
         ))}
       </div>
-      <div className="mt-auto flex items-center gap-2 pt-4 text-glow">
-        <span className="h-2 w-2 animate-pulse-soft rounded-full bg-glow" />
-        agent: opening pull request…
-      </div>
-    </div>
-  )
-}
-
-function AlbusVisual() {
-  const q = [
-    { label: "Conceptual depth", v: 86 },
-    { label: "Code quality", v: 72 },
-    { label: "Reasoning", v: 94 },
-  ]
-  return (
-    <div className="glass-soft flex h-full flex-col justify-center gap-5 rounded-2xl p-6">
-      {q.map((item, i) => (
-        <div key={item.label}>
-          <div className="mb-1.5 flex justify-between text-xs">
-            <span className="text-muted">{item.label}</span>
-            <span className="text-foreground">{item.v}</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10">
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: `${item.v}%` }}
-              viewport={{ amount: 0.5 }}
-              transition={{ duration: 1, delay: i * 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="h-full rounded-full bg-gradient-to-r from-accent to-glow"
-            />
-          </div>
-        </div>
-      ))}
-      <p className="text-xs font-light text-muted">
-        Adaptive difficulty · auto-graded · human-level rubric
-      </p>
-    </div>
+    </ShowcaseShell>
   )
 }
